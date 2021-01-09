@@ -68,3 +68,21 @@ class VocabUtility:
         per_partition_vocab_size = divide(global_vocab_size, world_size)
         return VocabUtility.vocab_range_from_per_partition_vocab_size(
             per_partition_vocab_size, rank, world_size)
+
+class LogitUtility:
+    """Split the logit into `world_size` chunks amd return the
+    first and last index of the logit belonging to the `rank`
+    partition: Note that indecies in [fist, last)"""
+
+    @staticmethod
+    def logit_range_from_per_partition_logit_size(per_partition_vocab_size,
+                                                  rank, world_size):
+        index_f = rank * per_partition_vocab_size
+        index_l = index_f + per_partition_vocab_size
+        return index_f, index_l
+
+    @staticmethod
+    def logit_range_from_global_logit_size(global_vocab_size, rank, world_size):
+        per_partition_vocab_size = divide(global_vocab_size, world_size)
+        return VocabUtility.vocab_range_from_per_partition_vocab_size(
+            per_partition_vocab_size, rank, world_size)

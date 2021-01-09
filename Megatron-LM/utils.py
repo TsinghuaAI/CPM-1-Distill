@@ -241,9 +241,9 @@ def save_ds_checkpoint(iteration, model, args):
     model.save_checkpoint(args.save, iteration, client_state = sd)
 
 
-def get_checkpoint_iteration(args):
+def get_checkpoint_iteration(load_path):
     # Read the tracker file and set the iteration.
-    tracker_filename = get_checkpoint_tracker_filename(args.load)
+    tracker_filename = get_checkpoint_tracker_filename(load_path)
     if not os.path.isfile(tracker_filename):
         print_rank_0('WARNING: could not find the metadata file {} '.format(
             tracker_filename))
@@ -268,17 +268,17 @@ def get_checkpoint_iteration(args):
     
     return iteration, release, True
 
-def load_checkpoint(model, optimizer, lr_scheduler, args):
+def load_checkpoint(load_path, model, optimizer, lr_scheduler, args):
     """Load a model checkpoint."""
 
-    iteration, release, success = get_checkpoint_iteration(args)
+    iteration, release, success = get_checkpoint_iteration(load_path)
 
     if not success:
         return 0
         
     if args.deepspeed:
 
-        checkpoint_name, sd = model.load_checkpoint(args.load, iteration)
+        checkpoint_name, sd = model.load_checkpoint(load_path, iteration, load_module_strict=False, load_optimizer_states=False, load_lr_scheduler_states=False)
 
         if checkpoint_name is None:
             if mpu.get_data_parallel_rank() == 0:
@@ -288,7 +288,7 @@ def load_checkpoint(model, optimizer, lr_scheduler, args):
     else:
         
         # Checkpoint.
-        checkpoint_name = get_checkpoint_name(args.load, iteration, release)
+        checkpoint_name = get_checkpoint_name(load_path, iteration, release)
         
         if mpu.get_data_parallel_rank() == 0:
             print('global rank {} is loading checkpoint {}'.format(
