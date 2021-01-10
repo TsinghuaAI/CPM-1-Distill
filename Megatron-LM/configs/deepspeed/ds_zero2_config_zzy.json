@@ -1,7 +1,0 @@
-{
-  "train_micro_batch_size_per_gpu": 4,
-  "gradient_accumulation_steps": 8,
-  "steps_per_print": 80,
-  "gradient_clipping": 1.0,
-  "wall_clock_breakdown": false
-}

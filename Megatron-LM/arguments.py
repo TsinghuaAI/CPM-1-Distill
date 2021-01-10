@@ -21,7 +21,7 @@ import torch
 import deepspeed
 
 
-def add_model_config_args(parser):
+def add_model_config_args(parser: argparse.ArgumentParser):
     """Model arguments"""
 
     group = parser.add_argument_group('model', 'model configuration')
@@ -31,6 +31,8 @@ def add_model_config_args(parser):
                        'of initializing from scratch. See '
                        '--tokenizer-model-type to specify which pretrained '
                        'BERT model to use')
+    group.add_argument("--student_config_path", type=str, required=True, default=None)
+    group.add_argument("--teacher_config_path", type=str, default=None)
     group.add_argument('--attention-dropout', type=float, default=0.1,
                        help='dropout probability for attention weights')
     group.add_argument('--num-attention-heads', type=int, default=16,
@@ -68,7 +70,7 @@ def add_model_config_args(parser):
     return parser
 
 
-def add_fp16_config_args(parser):
+def add_fp16_config_args(parser: argparse.ArgumentParser):
     """Mixed precision arguments."""
 
     group = parser.add_argument_group('fp16', 'fp16 configurations')
@@ -97,10 +99,14 @@ def add_fp16_config_args(parser):
     return parser
 
 
-def add_training_args(parser):
+def add_training_args(parser: argparse.ArgumentParser):
     """Training arguments."""
 
     group = parser.add_argument_group('train', 'training configurations')
+
+    group.add_argument('--do_train', action="store_true")
+    group.add_argument('--do_valid', action="store_true")
+    group.add_argument("--do_test", action="store_true")
 
     group.add_argument('--batch-size', type=int, default=4,
                        help='Data Loader batch size')
@@ -121,6 +127,11 @@ def add_training_args(parser):
                        help='report interval')
     group.add_argument('--exit-interval', type=int, default=None,
                        help='Exit the program after this many new iterations.')
+
+    # train loss
+    group.add_argument('--alpha_ce', type=float, default=0.0)
+    group.add_argument('--alpha_lm', type=float, default=0.0)
+    group.add_argument('--temperature_kd', type=float, default=1)
 
     group.add_argument('--seed', type=int, default=1234,
                        help='random seed')
@@ -152,8 +163,10 @@ def add_training_args(parser):
                        help='Do not save current optimizer.')
     group.add_argument('--no-save-rng', action='store_true',
                        help='Do not save current rng state.')
-    group.add_argument('--load', type=str, default=None,
-                       help='Path to a directory containing a model checkpoint.')
+    group.add_argument('--student_load', type=str, default=None,
+                       help='Path to a directory containing a student model checkpoint.')
+    group.add_argument('--teacher_load', type=str, default=None,
+                       help='Path to a directory containing a teacher model checkpoint.')
     group.add_argument('--no-load-optim', action='store_true',
                        help='Do not load optimizer when loading checkpoint.')
     group.add_argument('--no-load-rng', action='store_true',
@@ -177,7 +190,7 @@ def add_training_args(parser):
     return parser
 
 
-def add_evaluation_args(parser):
+def add_evaluation_args(parser: argparse.ArgumentParser):
     """Evaluation arguments."""
 
     group = parser.add_argument_group('validation', 'validation configurations')
@@ -210,7 +223,8 @@ def add_evaluation_args(parser):
 
     return parser
 
-def add_text_generate_args(parser):
+
+def add_text_generate_args(parser: argparse.ArgumentParser):
     """Text generate arguments."""
 
     group = parser.add_argument_group('Text generation', 'configurations')
@@ -221,7 +235,7 @@ def add_text_generate_args(parser):
     return parser
 
 
-def add_data_args(parser):
+def add_data_args(parser: argparse.ArgumentParser):
     """Train/valid/test data arguments."""
 
     group = parser.add_argument_group('data', 'data configurations')

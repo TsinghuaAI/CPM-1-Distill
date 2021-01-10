@@ -51,3 +51,9 @@ from .transformer import BertParallelSelfAttention
 from .transformer import BertParallelTransformerLayer
 from .transformer import GPT2ParallelTransformer
 from .transformer import LayerNorm
+
+from .functional import parallel_kl_div_loss
+from .functional import parallel_cross_entropy_loss
+from .functional import parallel_softmax
+from .functional import parallel_log_softmax
+from .functional import parallel_soft_cross_entropy_loss

@@ -1,6 +1,7 @@
 import sys
 import os
 import torch
+import copy
 
 checkpoint = sys.argv[1]
 target_mp = int(sys.argv[2])
@@ -32,6 +33,21 @@ new_checkpoint = os.path.join(new_checkpoint, str(iteration))
 if not os.path.exists(new_checkpoint):
     os.mkdir(new_checkpoint)
 
+preserve_keys = [
+    "lr_scheduler",
+    "skipped_steps",
+    "global_steps",
+    "global_samples",
+    "dp_world_size",
+    "iteration",
+    "np_rng_state",
+    "random_rng_state",
+    "torch_rng_state",
+    "cuda_rng_state",
+    "rng_tracker_states",
+    
+]
+
 if target_mp < len(filenames):
     print("Decrease MP size.")
     assert len(filenames) % target_mp == 0
@@ -43,7 +59,12 @@ if target_mp < len(filenames):
                 map_location='cpu')
         for k in d.keys():
             if k !='module':
-                d[k] = None
+                if k in preserve_keys:
+                    pass
+                elif k == "mp_world_size":
+                    d[k] = target_mp
+                else:
+                    d[k] = None
         for j in range(start+1, end):
             d_new = torch.load(filenames[j], 
                     map_location='cpu')
@@ -90,7 +111,12 @@ if target_mp > len(filenames):
             shift = j - start
             for k, v in d.items():
                 if k != 'module':
-                    d_new[k] = None
+                    if k in preserve_keys:
+                        d_new[k] = copy.deepcopy(d[k])
+                    elif k == "mp_world_size":
+                        d_new[k] = target_mp
+                    else:
+                        d_new[k] = None
             d_new['module'] = {}
             for k, v in d['module'].items():
                 assert len(v.shape) < 3
