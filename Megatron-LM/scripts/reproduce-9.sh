@@ -53,7 +53,7 @@ gpt_options="${gpt_options}
        # --deepspeed-activation-checkpointing \
        # --fp16 \
 
-run_cmd="deepspeed --num_nodes ${NUM_WORKERS} --num_gpus ${NUM_GPUS_PER_WORKER} --hostfile /mnt/nfs/home/zzy/hostfile-4 pretrain_gpt2.py $@ ${gpt_options}"
+run_cmd="deepspeed --num_nodes ${NUM_WORKERS} --num_gpus ${NUM_GPUS_PER_WORKER} --hostfile /mnt/nfs/home/zzy/hostfile-9 pretrain_gpt2.py $@ ${gpt_options}"
 echo ${run_cmd}
 eval ${run_cmd}
 
