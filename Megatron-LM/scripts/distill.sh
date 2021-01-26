@@ -27,7 +27,7 @@ SAVE_PATH="${WORKING_DIR}/results/distill-zzy-60000/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small.json"
 TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
-HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-2-3-8-9"
+HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-2-3-7-9"
 
 BATCH_SIZE=8
 LR=0.00015
