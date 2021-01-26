@@ -16,6 +16,7 @@
 """GPT-2 model."""
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 import mpu
@@ -50,6 +51,7 @@ class GPT2Model(torch.nn.Module):
                  max_sequence_length,
                  checkpoint_activations,
                  checkpoint_num_layers=1,
+                 teacher_hidden_size=None,
                  parallel_output=True):
 
         super(GPT2Model, self).__init__()
@@ -79,6 +81,10 @@ class GPT2Model(torch.nn.Module):
                                                        output_dropout_prob,
                                                        checkpoint_activations,
                                                        checkpoint_num_layers)
+        self.teacher_hidden_size = None
+        if teacher_hidden_size is not None:
+            self.teacher_hidden_size = teacher_hidden_size
+            self.hidden_transform = nn.Linear(hidden_size, teacher_hidden_size, bias=False)
 
     def forward(self, input_ids, position_ids, attention_mask):
 
@@ -91,7 +97,7 @@ class GPT2Model(torch.nn.Module):
         embeddings = self.embedding_dropout(embeddings)
 
         # Transformer.
-        transformer_output = self.transformer(embeddings, attention_mask)
+        transformer_output, qkv_out_parallel = self.transformer(embeddings, attention_mask)
 
         # Parallel logits.
         transformer_output_parallel = mpu.copy_to_model_parallel_region(
@@ -100,16 +106,19 @@ class GPT2Model(torch.nn.Module):
                                    self.word_embeddings.weight)
 
         if self.parallel_output:
-            return logits_parallel
+            return logits_parallel, qkv_out_parallel
 
-        return mpu.gather_from_model_parallel_region(logits_parallel)
+        return mpu.gather_from_model_parallel_region(logits_parallel), mpu.gather_from_model_parallel_region(qkv_out_parallel)
 
 
 def gpt2_get_params_for_weight_decay_optimization(module):
 
     weight_decay_params = {'params': []}
     no_weight_decay_params = {'params': [], 'weight_decay': 0.0}
-    for module_ in module.modules():
+    for name, module_ in module.named_modules():
+        if name == "hidden_transform":
+            continue
+
         if isinstance(module_, (mpu.LayerNorm, torch.nn.LayerNorm)):
             no_weight_decay_params['params'].extend(
                 [p for p in list(module_._parameters.values())
@@ -123,3 +132,13 @@ def gpt2_get_params_for_weight_decay_optimization(module):
                  if p is not None and n == 'bias'])
 
     return weight_decay_params, no_weight_decay_params
+
+
+def gpt2_get_teacher_student_transform_params(module):
+    weight_decay_params = {'params': []}
+    for name, module_ in module.named_modules():
+        if name == "hidden_transform":
+            weight_decay_params['params'].extend(
+                [p for n, p in list(module_._parameters.items()) if p is not None])
+
+    return (weight_decay_params,)

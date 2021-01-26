@@ -57,3 +57,5 @@ from .functional import parallel_cross_entropy_loss
 from .functional import parallel_softmax
 from .functional import parallel_log_softmax
 from .functional import parallel_soft_cross_entropy_loss
+from .functional import parallel_mse_loss
+from .functional import parallel_cos_loss

@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import squeeze
 import torch
 import torch.nn as nn
 
@@ -109,7 +110,16 @@ class _ParallelSoftCrossEntropyLoss(torch.autograd.Function):
                                      op=torch.distributed.ReduceOp.SUM,
                                      group=get_model_parallel_group())
 
-        loss = torch.log(sum_exp_logits) - sum_targets_softmax_logits
+        log_targets_softmax = torch.log(targets_softmax)
+        sum_log_targets_softmax = torch.matmul(
+            targets_softmax.unsqueeze(-2), log_targets_softmax.unsqueeze(-1)).squeeze(-1).squeeze(-1)
+
+        torch.distributed.all_reduce(sum_log_targets_softmax,
+                                     op=torch.distributed.ReduceOp.SUM,
+                                     group=get_model_parallel_group())
+
+
+        loss = torch.log(sum_exp_logits) - sum_targets_softmax_logits + sum_log_targets_softmax
 
         logits_softmax = torch.div(exp_logits, sum_exp_logits.unsqueeze(-1))
 
@@ -123,6 +133,7 @@ class _ParallelSoftCrossEntropyLoss(torch.autograd.Function):
         grad_input = (logits_softmax - targets_softmax) * grad_output.unsqueeze(-1)
 
         return grad_input, None
+
 
 class _ParallelCrossEntropyLoss(torch.autograd.Function):
 
@@ -209,6 +220,71 @@ class _ParallelCrossEntropyLoss(torch.autograd.Function):
         return grad_input, None
 
 
+class _ParallelMSELoss(torch.autograd.Function):
+    
+    @staticmethod
+    def forward(cls, logits: torch.Tensor, targets: torch.Tensor):
+        diff = logits - targets
+        square_diff = diff * diff
+        
+        cls.save_for_backward(diff)
+
+        output = square_diff.sum(-1)
+
+        output = torch.distributed.all_reduce(output,
+                                              op=torch.distributed.ReduceOp.SUM,
+                                              group=get_model_parallel_group())
+
+        return output
+
+    @staticmethod
+    def backward(cls, grad_output: torch.Tensor):
+        diff, = cls.saved_tensors
+        grad_input = 2 * diff * grad_output.unsqueeze(-1)
+        return grad_input, None
+
+
+class _ParallelCosineEmbeddingLoss(torch.autograd.Function):
+
+    '''
+    NOTE: Only for target = 1
+    '''
+    @staticmethod
+    def forward(cls, logits_x: torch.Tensor, logits_y: torch.Tensor):
+        dot_prod = (logits_x * logits_y).sum(-1)
+        dot_prod = torch.distributed.all_reduce(dot_prod,
+                                                op=torch.distributed.ReduceOp.SUM,
+                                                group=get_model_parallel_group())
+
+        len_x_sqrt = (logits_x * logits_x).sum(-1)
+        len_x_sqrt = torch.distributed.all_reduce(len_x_sqrt,
+                                             op=torch.distributed.ReduceOp.SUM,
+                                             group=get_model_parallel_group())
+        len_x = torch.sqrt(len_x_sqrt)
+
+        len_y_sqrt = (logits_y * logits_y).sum(-1)
+        len_y_sqrt = torch.distributed.all_reduce(len_y_sqrt,
+                                             op=torch.distributed.ReduceOp.SUM,
+                                             group=get_model_parallel_group())
+        len_y = torch.sqrt(len_y_sqrt)
+
+        len_prod = len_x * len_y
+
+        cos_output = dot_prod / len_prod
+
+        cls.save_for_backward(logits_x, logits_y, len_x_sqrt, len_y_sqrt, len_prod, cos_output)
+
+        return 1 - cos_output
+
+    @staticmethod
+    def backward(cls, grad_output: torch.Tensor):
+        logits_x, logits_y, len_x_sqrt, len_y_sqrt, len_prod, cos_output = cls.saved_tensors
+
+        grad_input_x = (cos_output.unsqueeze(-1) * logits_x / len_x_sqrt.unsqueeze(-1) - logits_y / len_prod.unsqueeze(-1)) * grad_output.unsqueeze(-1)
+        grad_input_y = (cos_output.unsqueeze(-1) * logits_y / len_y_sqrt.unsqueeze(-1) - logits_x / len_prod.unsqueeze(-1)) * grad_output.unsqueeze(-1)
+
+        return grad_input_x, grad_input_y
+
 
 def parallel_kl_div_loss(p, q):
     return _ParallelKLDivLoss.apply(p, q)
@@ -226,5 +302,13 @@ def parallel_softmax(p, q):
     return _ParallelSoftmax.apply(p, q)
 
 
-def parallel_log_softmax(logits, target):
-    return _ParallelLogSoftmax.apply(logits, target)
+def parallel_log_softmax(logits, targets):
+    return _ParallelLogSoftmax.apply(logits, targets)
+
+
+def parallel_mse_loss(logits, targets):
+    return _ParallelMSELoss.apply(logits, targets)
+
+
+def parallel_cos_loss(logits_x, logits_y):
+    return _ParallelCosineEmbeddingLoss.apply(logits_x, logits_y)
