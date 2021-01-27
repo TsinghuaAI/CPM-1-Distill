@@ -63,7 +63,7 @@ class GPT2ParallelSelfAttention(torch.nn.Module):
     """
     def __init__(self, hidden_size, num_attention_heads,
                  attention_dropout_prob, output_dropout_prob,
-                 init_method, output_layer_init_method=None, output_qkv=False):
+                 init_method, output_layer_init_method=None):
         super(GPT2ParallelSelfAttention, self).__init__()
         # Set output layer initialization if not provided.
         if output_layer_init_method is None:
@@ -153,10 +153,7 @@ class GPT2ParallelSelfAttention(torch.nn.Module):
         output = self.dense(context_layer)
         output = self.output_dropout(output)
 
-        # [3, b, s, hp*hn]
-        qkv_out = torch.stack([mixed_query_layer, mixed_key_layer, mixed_value_layer], dim=0)
-
-        return output, qkv_out
+        return output
 
 
 @torch.jit.script
@@ -288,7 +285,7 @@ class GPT2ParallelTransformerLayer(torch.nn.Module):
         # Layer norm at the begining of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
         # Self attention.
-        attention_output, qkv_out = self.attention(layernorm_output, ltor_mask)
+        attention_output = self.attention(layernorm_output, ltor_mask)
         # Residual connection.
         layernorm_input = hidden_states + attention_output
         # Layer norm post the self attention.
@@ -298,7 +295,7 @@ class GPT2ParallelTransformerLayer(torch.nn.Module):
         # Second residual connection.
         output = layernorm_input + mlp_output
 
-        return output, qkv_out
+        return output
 
 
 def unscaled_init_method(sigma):
@@ -397,20 +394,14 @@ class GPT2ParallelTransformer(torch.nn.Module):
 
     def forward(self, hidden_states, attention_mask):
 
-        all_qkv_out = []
-
         def custom(start, end):
             def custom_forward(*inputs):
-                all_qkv_out_ = []
                 layers_ = self.layers[start:end]
                 hidden_states_ = inputs[0]
                 for layer in layers_:
-                    hidden_states_, qkv_out = layer(hidden_states_, inputs[1])
-                    all_qkv_out_.append(qkv_out)
+                    hidden_states_ = layer(hidden_states_, inputs[1])
                 
-                all_qkv_out_ = torch.stack(all_qkv_out_, dim=0)
-                
-                return hidden_states_, all_qkv_out_
+                return hidden_states_
             return custom_forward
 
         if self.checkpoint_activations:
@@ -418,22 +409,17 @@ class GPT2ParallelTransformer(torch.nn.Module):
             num_layers = len(self.layers)
             chunk_length = self.checkpoint_num_layers
             while l < num_layers:
-                hidden_states, all_qkv_out_ = checkpoint(custom(l, l+chunk_length),
+                hidden_states = checkpoint(custom(l, l+chunk_length),
                                            hidden_states, attention_mask)
                 l += chunk_length
-                all_qkv_out.append(all_qkv_out_)
         else:
             for layer in self.layers:
-                hidden_states, qkv_out = layer(hidden_states, attention_mask)
-                # qkv_out: [3, b, s, hp*hn]
-                all_qkv_out.append(qkv_out.unsqueeze(0))
+                hidden_states = layer(hidden_states, attention_mask)
         
-        all_qkv_out = torch.cat(all_qkv_out, dim=0)
-
         # Final layer norm.
         output = self.final_layernorm(hidden_states)
 
-        return output, all_qkv_out
+        return output
 
 
 class BertParallelSelfAttention(torch.nn.Module):

@@ -3,39 +3,43 @@
 WORKING_DIR=${HOME}/CPM-distill
 
 # Change for multinode config
-MP_SIZE=2
+MP_SIZE=1
 
-NUM_WORKERS=4
-NUM_GPUS_PER_WORKER=8
+NUM_WORKERS=1
+NUM_GPUS_PER_WORKER=4
 
 DATA_PATH="${WORKING_DIR}/data/corpus_12_1_text_document"
 
 # S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_medium_config.json"
 # S_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp2/"
 
-S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_small_config.json"
-S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/zzy_20000"
+S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_small_config_teacher_hidden.json"
+# S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/zzy_60000"
+S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp1/my_100000/"
 
 # S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
 # S_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
 
-T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
-T_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
+# T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
+T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_medium_config.json"
+# T_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
+T_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp1/"
+# T_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp2/"
 # T_CKPT_PATH="${WORKING_DIR}/checkpoints/small/mp2/my_100000/"
 
-SAVE_PATH="${WORKING_DIR}/results/distill-zzy-20000/"
+SAVE_PATH="${WORKING_DIR}/results-local/distill-zzy-60000-hidden/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small.json"
 TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
-HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-2-3-7-9"
+HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-6"
 
-BATCH_SIZE=32
+BATCH_SIZE=2
 LR=0.00015
-TRAIN_ITER=600000
+TRAIN_ITER=1200000
 ALPHA_LM=0.6
 ALPHA_CE=0.4
-# ALPHA_QKV=0.5
-TEMPERATURE_KD=1
+ALPHA_QKV=0.5
+TEMPERATURE_KD=2
 
 SEQ_LENGTH=1024
 
@@ -71,6 +75,7 @@ GPT_OPT+=" --deepspeed"
 GPT_OPT+=" --deepspeed_config ${DS_CONFIG}"
 GPT_OPT+=" --alpha_lm ${ALPHA_LM}"
 GPT_OPT+=" --alpha_ce ${ALPHA_CE}"
+# GPT_OPT+=" --alpha_hidden 1"
 GPT_OPT+=" --temperature_kd ${TEMPERATURE_KD}"
 GPT_OPT+=" --do_train"
 GPT_OPT+=" --do_valid"
