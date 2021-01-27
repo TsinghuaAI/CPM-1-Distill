@@ -225,7 +225,7 @@ def setup_model_and_optimizer(args):
         )
 
     if args.load is not None:
-        args.iteration = load_checkpoint(model, optimizer, lr_scheduler, args)
+        args.iteration = load_checkpoint(args.load, model, optimizer, lr_scheduler, args)
     else:
         args.iteration = 0
 

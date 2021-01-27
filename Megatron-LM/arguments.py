@@ -31,7 +31,7 @@ def add_model_config_args(parser: argparse.ArgumentParser):
                        'of initializing from scratch. See '
                        '--tokenizer-model-type to specify which pretrained '
                        'BERT model to use')
-    group.add_argument("--student_config_path", type=str, required=True, default=None)
+    group.add_argument("--student_config_path", type=str, default=None)
     group.add_argument("--teacher_config_path", type=str, default=None)
     group.add_argument('--attention-dropout', type=float, default=0.1,
                        help='dropout probability for attention weights')
@@ -77,6 +77,7 @@ def add_fp16_config_args(parser: argparse.ArgumentParser):
 
     group.add_argument('--fp16', action='store_true',
                        help='Run model in fp16 mode')
+    group.add_argument('--teacher_fp16', action="store_true")
     group.add_argument('--fp32-embedding', action='store_true',
                        help='embedding in fp32')
     group.add_argument('--fp32-layernorm', action='store_true',
@@ -131,6 +132,11 @@ def add_training_args(parser: argparse.ArgumentParser):
     # train loss
     group.add_argument('--alpha_ce', type=float, default=0.0)
     group.add_argument('--alpha_lm', type=float, default=0.0)
+    group.add_argument('--alpha_attn', type=float, default=0.0)
+    group.add_argument('--alpha_mse', type=float, default=0.0)
+    group.add_argument('--alpha_hidden', type=float, default=0.0)
+    group.add_argument('--alpha_qkv', type=float, default=0.0)
+    group.add_argument('--relation_heads', type=int, default=64)
     group.add_argument('--temperature_kd', type=float, default=1)
 
     group.add_argument('--seed', type=int, default=1234,
@@ -163,6 +169,8 @@ def add_training_args(parser: argparse.ArgumentParser):
                        help='Do not save current optimizer.')
     group.add_argument('--no-save-rng', action='store_true',
                        help='Do not save current rng state.')
+    group.add_argument('--load', type=str, default=None,
+                       help='Path to a directory containing a student model checkpoint.')
     group.add_argument('--student_load', type=str, default=None,
                        help='Path to a directory containing a student model checkpoint.')
     group.add_argument('--teacher_load', type=str, default=None,
@@ -179,6 +187,7 @@ def add_training_args(parser: argparse.ArgumentParser):
                        help='Resume the dataloader when resuming training. '
                        'Does not apply to tfrecords dataloader, try resuming'
                        'with a different seed in this case.')
+    group.add_argument('--log_file', type=str, default=None)
     # distributed training args
     group.add_argument('--distributed-backend', default='nccl',
                        help='which backend to use for distributed '

@@ -13,8 +13,8 @@ DATA_PATH="${WORKING_DIR}/data/corpus_12_1_text_document"
 # S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_medium_config.json"
 # S_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp2/"
 
-S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_small_config.json"
-S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/zzy_60000"
+S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_small_config_teacher_hidden.json"
+S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/my_60000"
 
 # S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
 # S_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
@@ -23,13 +23,13 @@ T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
 T_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
 # T_CKPT_PATH="${WORKING_DIR}/checkpoints/small/mp2/my_100000/"
 
-SAVE_PATH="${WORKING_DIR}/results-local/distill-zzy-60000/"
+SAVE_PATH="${WORKING_DIR}/results-local/distill-zzy-60000-hidden/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small_single.json"
+DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small.json"
 TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
-HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-5"
+HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-6"
 
-BATCH_SIZE=1
+BATCH_SIZE=2
 LR=0.00015
 TRAIN_ITER=1200000
 ALPHA_LM=0.6
@@ -70,9 +70,9 @@ GPT_OPT+=" --log-interval 500"
 GPT_OPT+=" --deepspeed"
 GPT_OPT+=" --deepspeed_config ${DS_CONFIG}"
 GPT_OPT+=" --alpha_lm ${ALPHA_LM}"
-GPT_OPT+=" --alpha_ce ${ALPHA_CE}"
-GPT_OPT+=" --alpha_qkv ${ALPHA_QKV}"
-GPT_OPT+=" --temperature_kd ${TEMPERATURE_KD}"
+# GPT_OPT+=" --alpha_ce ${ALPHA_CE}"
+# GPT_OPT+=" --alpha_hidden 1"
+# GPT_OPT+=" --temperature_kd ${TEMPERATURE_KD}"
 GPT_OPT+=" --do_train"
 GPT_OPT+=" --do_valid"
 GPT_OPT+=" --do_test"
