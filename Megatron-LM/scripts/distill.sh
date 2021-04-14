@@ -10,34 +10,23 @@ NUM_GPUS_PER_WORKER=8
 
 DATA_PATH="${WORKING_DIR}/data/corpus_12_1_text_document"
 
-# S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_medium_config.json"
-# S_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp2/"
-
 S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_small_config.json"
-# S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/results/distill-zzy-20000/"
-# S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/zzy_130000"
-S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/CPM-20000"
-
-
-# S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
-# S_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
+S_CKPT_PATH="${WORKING_DIR}/checkpoints/small/mp2/CPM-20000"
 
 T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
-T_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
-# T_CKPT_PATH="${WORKING_DIR}/checkpoints/small/mp2/my_100000/"
+T_CKPT_PATH="${WORKING_DIR}/checkpoints/CPM-large/"
 
-SAVE_PATH="${WORKING_DIR}/results/distill-zzy-20000-CPM/"
+SAVE_PATH="${WORKING_DIR}/results/distill/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small.json"
 TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
-HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-2-3-7-9"
+HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile"
 
 BATCH_SIZE=32
 LR=0.00015
 TRAIN_ITER=600000
 ALPHA_LM=0.6
 ALPHA_CE=0.4
-# ALPHA_QKV=0.5
 TEMPERATURE_KD=1
 
 SEQ_LENGTH=1024

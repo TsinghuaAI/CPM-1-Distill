@@ -61,42 +61,6 @@ else:
 
 # torch.autograd.set_detect_anomaly(True)
 
-def get_model_wo_parallel(args, config, do_fp16=False):
-    """Build the model."""
-
-    print_rank_0('building GPT2 model ...')
-    model = GPT2Model(
-        **config,
-        checkpoint_activations=args.checkpoint_activations,
-        checkpoint_num_layers=args.checkpoint_num_layers,
-        parallel_output=False)
-
-    if mpu.get_data_parallel_rank() == 0:
-        print(' > number of parameters on model parallel rank {}: {}'.format(
-            mpu.get_model_parallel_rank(),
-            sum([p.nelement() for p in model.parameters()])), flush=True)
-
-    # To prevent OOM for model sizes that cannot fit in GPU memory in full precision
-    if args.deepspeed and do_fp16:
-        model.half()
-
-    # GPU allocation.
-    model.cuda(torch.cuda.current_device())
-
-    # Fp16 conversion.
-    if do_fp16:
-        model = FP16_Module(model)
-
-    # Wrap model for distributed training.
-    if USE_TORCH_DDP:
-        i = torch.cuda.current_device()
-        model = DDP(model, device_ids=[i], output_device=i,
-                    process_group=mpu.get_data_parallel_group())
-    else:
-        model = DDP(model)
-
-    return model
-
 
 def get_model(args, config, do_fp16=False):
     """Build the model."""
@@ -342,7 +306,7 @@ def forward_step(data_iterator, student_model, teacher_model, args, timers):
     s_logits = s_logits.contiguous().float()
 
     loss_mask = loss_mask.view(-1)
-    if args.alpha_ce > 0 or args.alpha_mse > 0 or args.alpha_attn > 0 or args.alpha_hidden > 0:
+    if args.alpha_ce > 0 or args.alpha_mse > 0:
         with torch.no_grad():
             t_logits = teacher_model(tokens, position_ids,
                                      attention_mask)  # [b * s * v_p]
@@ -386,26 +350,6 @@ def backward_step(optimizer, model, loss, args, timers):
             optimizer.backward(loss, update_master_grads=False)
         else:
             loss.backward()
-
-    # Reduce across processes.
-    # lm_loss_reduced = loss
-
-    # reduced_losses = loss.view(1)
-
-    # if args.deepspeed:
-    #     # DeepSpeed backward propagation already addressed all reduce communication.
-    #     # Reset the timer to avoid breaking timer logs below.
-    #     timers('allreduce').reset()
-    # else:
-    #     torch.distributed.all_reduce(reduced_losses.data)
-    #     reduced_losses.data = reduced_losses.data / args.world_size
-    #     if not USE_TORCH_DDP:
-    #         timers('allreduce').start()
-    #         model.allreduce_params(reduce_after=False,
-    #                                fp32_allreduce=args.fp32_allreduce)
-    #         timers('allreduce').stop()
-
-    # lm_loss_reduced = reduced_losses
 
     # Update master gradients.
     if not args.deepspeed:
@@ -634,7 +578,6 @@ def evaluate(data_iterator, student_model, teacher_model, args, timers, verbose=
 def evaluate_and_print_results(prefix, data_iterator, student_model, teacher_model,
                                args, timers, verbose=False):
     """Helper function to evaluate and dump results on screen."""
-    # TODO: do ppl for tot loss? 
     losses = evaluate(data_iterator, student_model, teacher_model, args, timers, verbose)
     lm_ppl = None
     if "lm_loss" in losses:
@@ -843,26 +786,6 @@ def main():
         build_train_valid_test_data_iterators(
             train_valid_test_dataset_provider, args)
 
-    # Resume data loader if necessary.
-    # if args.resume_dataloader:
-    #    if train_data is not None:
-    #        train_data.batch_sampler.start_iter = args.iteration % \
-    #                                              len(train_data)
-    #    if val_data is not None:
-    #        start_iter_val = (args.train_iters // args.save_interval) * \
-    #                         args.eval_interval
-    #        val_data.batch_sampler.start_iter = start_iter_val % \
-    #                                            len(val_data)
-    # if train_data is not None:
-    #    train_data_iterator = iter(train_data)
-    # else:
-    #    train_data_iterator = None
-    # if val_data is not None:
-    #    val_data_iterator = iter(val_data)
-    # else:
-    #    val_data_iterator = None
-
-    # TODO: figure out how to properly set this especially when resuming training
     iteration = 0
     if args.do_train:
         iteration, skipped = train(student_model, teacher_model,
@@ -879,10 +802,6 @@ def main():
     if args.save and iteration != 0:
         save_checkpoint(iteration, student_model, optimizer, lr_scheduler, args)
 
-    # if test_data is not None:
-    #    test_data_iterator = iter(test_data)
-    # else:
-    #    test_data_iterator = None
     if args.do_test:
         # Run on test data.
         prefix = 'the end of training for test data'
