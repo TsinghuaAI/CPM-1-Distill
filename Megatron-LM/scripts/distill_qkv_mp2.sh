@@ -5,7 +5,7 @@ WORKING_DIR=${HOME}/CPM-distill
 # Change for multinode config
 MP_SIZE=2
 
-NUM_WORKERS=2
+NUM_WORKERS=1
 NUM_GPUS_PER_WORKER=8
 
 DATA_PATH="${WORKING_DIR}/data/corpus_12_1_text_document"
@@ -14,28 +14,28 @@ DATA_PATH="${WORKING_DIR}/data/corpus_12_1_text_document"
 # S_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp2/"
 
 S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_small_config.json"
-S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/zzy_20000"
+S_CKPT_PATH="/mnt/nfs/home/gyx/CPM-distill/checkpoints/small/mp2/my_100000"
 
 # S_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
 # S_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
 
-T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_large_config.json"
-T_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
-# T_CKPT_PATH="${WORKING_DIR}/checkpoints/small/mp2/my_100000/"
+T_CONFIG_PATH="${WORKING_DIR}/Megatron-LM/configs/model/gpt_medium_config.json"
+# T_CKPT_PATH="/mnt/nfs/home/zzy/checkpoints/CPM-large/"
+T_CKPT_PATH="${WORKING_DIR}/checkpoints/medium/mp2/"
 
-SAVE_PATH="${WORKING_DIR}/results/distill-zzy-20000-qkv/"
+SAVE_PATH="${WORKING_DIR}/results-local/distill-zzy-60000-test-qkv/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small_2.json"
+DS_CONFIG="${WORKING_DIR}/Megatron-LM/configs/deepspeed/ds_zero2_config_small_single.json"
 TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
-HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-5-8"
+HOST_FILE="${WORKING_DIR}/Megatron-LM/configs/host_files/hostfile-5"
 
-BATCH_SIZE=32
+BATCH_SIZE=1
 LR=0.00015
 TRAIN_ITER=1200000
 ALPHA_LM=0.6
 ALPHA_CE=0.4
 ALPHA_QKV=0.5
-TEMPERATURE_KD=1
+TEMPERATURE_KD=2
 
 SEQ_LENGTH=1024
 
