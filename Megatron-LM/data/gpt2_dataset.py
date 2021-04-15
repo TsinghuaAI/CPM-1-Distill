@@ -23,8 +23,35 @@ import torch
 
 from utils import print_rank_0
 import mpu
-from data.bert_dataset import get_train_valid_test_split_
 from data.indexed_dataset import make_dataset as make_indexed_dataset
+
+
+def get_train_valid_test_split_(splits_string, size):
+    """ Get dataset splits from comma or '/' separated string list."""
+
+    splits = []
+    if splits_string.find(',') != -1:
+        splits = [float(s) for s in splits_string.split(',')]
+    elif splits_string.find('/') != -1:
+        splits = [float(s) for s in splits_string.split('/')]
+    else:
+        splits = [float(splits_string)]
+    while len(splits) < 3:
+        splits.append(0.)
+    splits = splits[:3]
+    splits_sum = sum(splits)
+    assert splits_sum > 0.0
+    splits = [split / splits_sum for split in splits]
+    splits_index = [0]
+    for index, split in enumerate(splits):
+        splits_index.append(splits_index[index] +
+                            int(round(split * float(size))))
+    diff = splits_index[-1] - size
+    for index in range(1, len(splits_index)):
+        splits_index[index] -= diff
+    assert len(splits_index) == 4
+    assert splits_index[-1] == size
+    return splits_index
 
 
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
@@ -137,6 +164,19 @@ class GPT2Dataset(torch.utils.data.Dataset):
         return {'text': np.array(sample, dtype=np.int64)}
 
 
+def compile_helper():
+    """Compile helper function ar runtime. Make sure this
+    is invoked on a single process."""
+    import os
+    import subprocess
+    path = os.path.abspath(os.path.dirname(__file__))
+    ret = subprocess.run(['make', '-C', path])
+    if ret.returncode != 0:
+       print("Making C++ dataset helpers module failed, exiting.")
+       import sys
+       sys.exit(1)
+
+
 def _build_index_mappings(name, data_prefix, documents, sizes,
                           num_samples, seq_length, seed):
     """Build doc-idx, sample-idx, and shuffle-idx.
@@ -179,7 +219,6 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
             start_time = time.time()
             # Use C++ implementation for speed.
             # First compile and then import.
-            from data.dataset_utils import compile_helper
             compile_helper()
             from data import helpers
             assert doc_idx.dtype == np.int32
@@ -257,55 +296,6 @@ def _build_doc_idx(documents, num_epochs, np_rng):
     doc_idx = doc_idx.astype(np.int32)
     np_rng.shuffle(doc_idx)
     return doc_idx
-
-
-def _build_sample_idx(sizes, doc_idx, seq_length,
-                      num_epochs, tokens_per_epoch):
-    """Sample index mapping is a 2D array with sizes
-    [number-of-samples + 1, 2] where [..., 0] contains
-    the index into `doc_idx` and [..., 1] is the
-    starting offset in that document."""
-
-    # Total number of samples. For -1 see comments in `_num_epochs`.
-    num_samples = (num_epochs * tokens_per_epoch - 1) // seq_length
-    sample_idx = np.zeros([num_samples + 1, 2], dtype=np.int32)
-
-    # Index into sample_idx.
-    sample_index = 0
-    # Index into doc_idx.
-    doc_idx_index = 0
-    # Begining offset for each document.
-    doc_offset = 0
-    # Start with first document and no offset.
-    sample_idx[sample_index][0] = doc_idx_index
-    sample_idx[sample_index][1] = doc_offset
-    sample_index += 1
-    while sample_index <= num_samples:
-        # Start with a fresh sequence.
-        remaining_seq_length = seq_length + 1
-        while remaining_seq_length != 0:
-            # Get the document length.
-            doc_id = doc_idx[doc_idx_index]
-            doc_length = sizes[doc_id] - doc_offset
-            # And add it to the current sequence.
-            remaining_seq_length -= doc_length
-            # If we have more than a full sequence, adjust offset and set
-            # remaining length to zero so we return from the while loop.
-            # Note that -1 here is for the same reason we have -1 in
-            # `_num_epochs` calculations.
-            if remaining_seq_length <= 0:
-                doc_offset += (remaining_seq_length + doc_length - 1)
-                remaining_seq_length = 0
-            else:
-                # Otherwise, start from the begining of the next document.
-                doc_idx_index += 1
-                doc_offset = 0
-        # Record the sequence.
-        sample_idx[sample_index][0] = doc_idx_index
-        sample_idx[sample_index][1] = doc_offset
-        sample_index += 1
-
-    return sample_idx
 
 
 def _build_shuffle_idx(size, np_rng):

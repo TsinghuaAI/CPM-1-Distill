@@ -17,13 +17,10 @@
 
 # Flag to use Pytorch ddp which uses overlapping communication and computation.
 from collections import defaultdict
-from deepspeed.runtime.constants import SCHEDULER_TYPE_DEFAULT
 from data.samplers import DistributedBatchSampler
 from data.gpt2_dataset import build_train_valid_test_datasets
-from gpt2_data_loader import make_gpt2_dataloaders
 import torch.distributed as dist
 from utils import print_rank_0, save_rank_0
-from utils import print_params_min_max_norm
 from utils import print_args
 from utils import report_memory
 from utils import load_checkpoint
@@ -36,20 +33,15 @@ from model import GPT2Model
 from learning_rates import AnnealingLR
 from fp16 import FP16_Optimizer
 from fp16 import FP16_Module
-from configure_data import configure_data
 from arguments import get_args
 import deepspeed
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.distributed as distributed
 import numpy as np
 import math
 import random
 import os
 import json
 from datetime import datetime
-import time
 from tqdm import tqdm
 USE_TORCH_DDP = False
 
@@ -661,54 +653,6 @@ def set_random_seed(seed):
         np.random.seed(seed)
         torch.manual_seed(seed)
         mpu.model_parallel_cuda_manual_seed(seed)
-
-
-def get_train_val_test_data(args):
-    """Load the data on rank zero and boradcast number of tokens to all GPUS."""
-
-    (train_data, val_data, test_data) = (None, None, None)
-
-    # Data loader only on rank 0 of each model parallel group.
-    if mpu.get_model_parallel_rank() == 0:
-        if args.use_npy_data_loader:
-            (train_data, val_data, test_data), num_tokens, \
-                eod_token = make_gpt2_dataloaders(args)
-        else:
-            data_config = configure_data()
-            data_config.set_defaults(data_set_type='GPT2', transpose=False)
-            (train_data, val_data, test_data), tokenizer = data_config.apply(
-                args)
-            num_tokens = tokenizer.num_tokens
-            eod_token = tokenizer.get_command('eos').Id
-            assert eod_token == tokenizer.get_command('pad').Id
-        before = num_tokens
-        after = before
-        multiple = args.make_vocab_size_divisible_by * \
-            mpu.get_model_parallel_world_size()
-        while (after % multiple) != 0:
-            after += 1
-        print_rank_0('> padded vocab (size: {}) with {} dummy '
-                     'tokens (new size: {})'.format(
-                         before, after - before, after))
-        save_rank_0(args, '> padded vocab (size: {}) with {} dummy '
-             'tokens (new size: {})'.format(
-                 before, after - before, after))
-        print_rank_0('> found end-of-document token: {}'.format(eod_token))
-        save_rank_0(args, '> found end-of-document token: {}'.format(eod_token))
-        
-        token_counts = torch.cuda.LongTensor([after, eod_token, int(
-            args.do_train), int(args.do_valid), int(args.do_test)])
-    else:
-        token_counts = torch.cuda.LongTensor([0, 0, 0, 0, 0])
-
-    # Broadcast num tokens.
-    torch.distributed.broadcast(token_counts,
-                                mpu.get_model_parallel_src_rank(),
-                                group=mpu.get_model_parallel_group())
-    num_tokens = token_counts[0].item()
-    eod_token = token_counts[1].item()
-
-    return train_data, val_data, test_data, num_tokens, eod_token
 
 
 def make_data_loader(dataset):
