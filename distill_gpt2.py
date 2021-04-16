@@ -17,23 +17,6 @@
 
 # Flag to use Pytorch ddp which uses overlapping communication and computation.
 from collections import defaultdict
-from data.samplers import DistributedBatchSampler
-from data.gpt2_dataset import build_train_valid_test_datasets
-import torch.distributed as dist
-from utils import print_rank_0, save_rank_0
-from utils import print_args
-from utils import report_memory
-from utils import load_checkpoint
-from utils import save_checkpoint
-from utils import Timers
-from apex.optimizers import FusedAdam as Adam
-import mpu
-from model import gpt2_get_params_for_weight_decay_optimization
-from model import GPT2Model
-from learning_rates import AnnealingLR
-from fp16 import FP16_Optimizer
-from fp16 import FP16_Module
-from arguments import get_args
 import deepspeed
 import torch
 import numpy as np
@@ -43,8 +26,27 @@ import os
 import json
 from datetime import datetime
 from tqdm import tqdm
-USE_TORCH_DDP = False
+from apex.optimizers import FusedAdam as Adam
 
+import mpu
+
+from data.samplers import DistributedBatchSampler
+from data.gpt2_dataset import build_train_valid_test_datasets
+from utils import print_rank_0, save_rank_0
+from utils import print_args
+from utils import report_memory
+from utils import load_checkpoint
+from utils import save_checkpoint
+from utils import Timers
+from model import gpt2_get_params_for_weight_decay_optimization
+from model import GPT2Model
+from learning_rates import AnnealingLR
+from fp16 import FP16_Optimizer
+from fp16 import FP16_Module
+from arguments import get_args
+
+
+USE_TORCH_DDP = False
 
 if USE_TORCH_DDP:
     from torch.nn.parallel.distributed import DistributedDataParallel as DDP
@@ -379,8 +381,8 @@ def reduce_loss(args, model, timers, loss):
 def see_memory_usage(message, force=False):
     if not force:
         return
-    dist.barrier()
-    if dist.get_rank() == 0:
+    torch.distributed.barrier()
+    if torch.distributed.get_rank() == 0:
         print(message)
         print("Memory Allocated ", torch.cuda.memory_allocated() /
               (1024*1024*1024), "GigaBytes")
@@ -453,7 +455,7 @@ def train(student_model, teacher_model,
 
     timers('interval time').start()
     report_memory_flag = True
-    for iter in tqdm(range(args.iteration, args.train_iters), disable=(torch.distributed.get_rank() != 0), desc="Training"):
+    for iter in range(args.iteration, args.train_iters):
         # while iteration < args.train_iters:
 
         losses, skipped_iter = train_step(train_data_iterator,
@@ -534,7 +536,7 @@ def evaluate(data_iterator, student_model, teacher_model, args, timers, verbose=
     total_losses = defaultdict(int)
 
     with torch.no_grad():
-        for iter in tqdm(range(args.eval_iters), disable=(torch.distributed.get_rank() != 0), desc="Evaluating"):
+        for iter in range(args.eval_iters):
             if verbose and iter % args.log_interval == 0:
                 print_rank_0('Evaluating iter {}/{}'.format(iter, args.eval_iters))
                 save_rank_0(args, 'Evaluating iter {}/{}'.format(iter, args.eval_iters))

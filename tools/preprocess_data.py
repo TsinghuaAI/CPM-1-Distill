@@ -31,7 +31,7 @@ try:
 except ImportError:
     nltk_available = False
 
-from data_utils.tokenization_gpt2 import GPT2Tokenizer
+from tokenization_gpt2 import GPT2Tokenizer
 from data import indexed_dataset
 
 

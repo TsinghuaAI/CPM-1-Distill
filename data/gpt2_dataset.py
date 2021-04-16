@@ -23,7 +23,7 @@ import torch
 
 from utils import print_rank_0
 import mpu
-from data.indexed_dataset import make_dataset as make_indexed_dataset
+from .indexed_dataset import make_dataset as make_indexed_dataset
 
 
 def get_train_valid_test_split_(splits_string, size):
