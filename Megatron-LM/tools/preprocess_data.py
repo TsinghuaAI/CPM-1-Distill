@@ -58,7 +58,7 @@ class Encoder(object):
 
     def initializer(self):
         # Use Encoder class as a container for global data
-        Encoder.tokenizer = GPT2Tokenizer(os.path.join(self.args.tokenizer_path, 'vocab.json'), os.path.join(self.args.tokenizer_path, 'merges.txt'), os.path.join(self.args.tokenizer_path, 'chinese_vocab.model'))
+        Encoder.tokenizer = GPT2Tokenizer(os.path.join(self.args.tokenizer_path, 'vocab.json'), os.path.join(self.args.tokenizer_path, 'chinese_vocab.model'))
 
         Encoder.splitter = IdentitySplitter()
 
@@ -145,7 +145,7 @@ def main():
     fin = open(args.input, 'r', encoding='utf-8')
 
     encoder = Encoder(args)
-    tokenizer = GPT2Tokenizer(os.path.join(args.tokenizer_path, 'vocab.json'), os.path.join(args.tokenizer_path, 'merges.txt'), os.path.join(args.tokenizer_path, 'chinese_vocab.model'))
+    tokenizer = GPT2Tokenizer(os.path.join(args.tokenizer_path, 'vocab.json'), os.path.join(args.tokenizer_path, 'chinese_vocab.model'))
     pool = multiprocessing.Pool(args.workers, initializer=encoder.initializer)
     encoded_docs = pool.imap(encoder.encode, fin, 25)
     #encoded_docs = map(encoder.encode, fin)

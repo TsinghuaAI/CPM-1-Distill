@@ -717,7 +717,7 @@ def main():
     args.iteration = student_iteration
 
     teacher_model = None
-    if args.teacher_config_path is not None and args.teacher_load is not None:
+    if args.teacher_config_path is not None:
         with open(args.teacher_config_path, "r") as f:
             teacher_config = json.load(f)
         teacher_model, _, _, _ = setup_model_and_optimizer(
