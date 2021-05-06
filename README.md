@@ -1,6 +1,6 @@
 # CPM-Distill
 
-本项目提供了 2.6B（26亿）参数 CPM-Large 模型的蒸馏代码，主要基于 Deepspeed、Megatron 实现
+本项目提供了 2.6B（26亿）参数 CPM-Large 模型的蒸馏代码，主要基于 Deepspeed、Megatron 实现。最终蒸馏的小参数模型参数量为 109M。蒸馏模型下载链接：https://cpm.baai.ac.cn/download.html
 
 ## 1 安装
 
@@ -42,18 +42,12 @@
 ## 3 模型
 
 将大模型和小模型每个位置上输出之间的 KL 散度作为蒸馏 loss，同时加上原来的 language model loss。总 loss 如下：
-$$
-L=\alpha L_{KL}+(1-\alpha)L_{lm}
-$$
-其中，
-$$
-L_{KL}=-\sum_i P^{(t)}_i \log P^{(s)}_i \\
-P_i^{(s)}= \mathrm{softmax} (z^{(s)}_i/T) \\
-P_i^{(t)}= \mathrm{softmax} (z^{(t)}_i)
-$$
+
+<img src="images/kd.png" style="zoom:50%;" />
+
 $L_{lm}$ 为 GPT-2 原始的 language modeling loss。
 
-由于 CPM-Large 的存储通常需要多张显卡，因此我们实现了多卡上的 Kl 散度 loss用于模型蒸馏，同时，这样蒸馏出来的小模型和大模型的模型并行数量是一样的。如果需要改变模型的模型并行数量，可以使用 CPM-Generate 中的脚本 [change_mp.py](https://github.com/TsinghuaAI/CPM-Generate/blob/main/change_mp.py)。同理，如果希望预先加载小模型的参数，则也需要将小模型的模型并行数量转换为和大模型相同。
+由于 CPM-Large 的存储通常需要多张显卡，因此我们实现了多卡上的 KL 散度 loss用于模型蒸馏，同时，这样蒸馏出来的小模型和大模型的模型并行数量是一样的。如果需要改变模型的模型并行数量，可以使用 CPM-Generate 中的脚本 [change_mp.py](https://github.com/TsinghuaAI/CPM-Generate/blob/main/change_mp.py)。同理，如果希望预先加载小模型的参数，则也需要将小模型的模型并行数量转换为和大模型相同。
 
 
 
