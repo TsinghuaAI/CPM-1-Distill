@@ -5,7 +5,8 @@ __pycache__/
 *.so
 
 .vscode/
-pretrain_data/
-raw_data/
+*.bin
+*.idx
+*.npy
 checkpoints/
 results/

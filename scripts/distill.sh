@@ -1,35 +1,47 @@
 #! /bin/bash
 
-WORKING_DIR=${HOME}/CPM-distill
+WORKING_DIR=${YOUR_PATH_TO}/CPM-distill
 
-# Change for multinode config
-MP_SIZE=2
+# 数据路径，如果按如下设置，模型读取的数据文件为 distill_pretrain_data.bin 和 distill_pretrain_data.idx
+DATA_PATH="${WORKING_DIR}/pretrain_data/distill_pretrain_data"
 
-NUM_WORKERS=4
-NUM_GPUS_PER_WORKER=8
-
-DATA_PATH="${WORKING_DIR}/pretrain_data/corpus_12_1_text_document"
-
+# 小模型配置、checkpoint 路径
 S_CONFIG_PATH="${WORKING_DIR}/configs/model/gpt_small_config.json"
 S_CKPT_PATH="${WORKING_DIR}/checkpoints/small/mp2/CPM-20000"
 
+# 大模型配置、checkpoint 路径
 T_CONFIG_PATH="${WORKING_DIR}/configs/model/gpt_large_config.json"
 T_CKPT_PATH="${WORKING_DIR}/checkpoints/CPM-large/"
 
+# deepspeed 配置路径
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_zero2_config_small.json"
+
+# 词表路径
+TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
+
+# 存储路径
 SAVE_PATH="${WORKING_DIR}/results/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_zero2_config_small.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_3w_new"
+
+# 多机多卡设置
+MP_SIZE=2
+NUM_WORKERS=4
+NUM_GPUS_PER_WORKER=8
+
+# 多机配置路径
 HOST_FILE="${WORKING_DIR}/configs/host_files/hostfile"
 
+# 训练超参数设置
 BATCH_SIZE=32
 LR=0.00015
 TRAIN_ITER=600000
-ALPHA_LM=0.6
-ALPHA_CE=0.4
-TEMPERATURE_KD=1
-
 SEQ_LENGTH=1024
+
+# 蒸馏超参数设置
+ALPHA_LM=0.6 # loss for lm
+ALPHA_CE=0.4 # loss for distillation
+TEMPERATURE_KD=1 # temperature for distillation
+
 
 GPT_OPT="" 
 GPT_OPT+=" --model-parallel-size ${MP_SIZE}"
