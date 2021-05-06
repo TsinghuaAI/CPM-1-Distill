@@ -43,9 +43,7 @@
 
 将大模型和小模型每个位置上输出之间的 KL 散度作为蒸馏 loss，同时加上原来的 language model loss。总 loss 如下：
 
-<center>
-<img src="images/kd.png" style="zoom:30%;" />
-</center>
+<img src="images/kd.png" width = "200" height = "150" align=center />
 
 L_lm 为 GPT-2 原始的 language modeling loss。
 
