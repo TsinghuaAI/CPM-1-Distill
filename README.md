@@ -43,9 +43,11 @@
 
 将大模型和小模型每个位置上输出之间的 KL 散度作为蒸馏 loss，同时加上原来的 language model loss。总 loss 如下：
 
-<img src="images/kd.png" style="zoom:50%;" />
+<center>
+<img src="images/kd.png" style="zoom:30%;" />
+</center>
 
-$L_{lm}$ 为 GPT-2 原始的 language modeling loss。
+L_lm 为 GPT-2 原始的 language modeling loss。
 
 由于 CPM-Large 的存储通常需要多张显卡，因此我们实现了多卡上的 KL 散度 loss用于模型蒸馏，同时，这样蒸馏出来的小模型和大模型的模型并行数量是一样的。如果需要改变模型的模型并行数量，可以使用 CPM-Generate 中的脚本 [change_mp.py](https://github.com/TsinghuaAI/CPM-Generate/blob/main/change_mp.py)。同理，如果希望预先加载小模型的参数，则也需要将小模型的模型并行数量转换为和大模型相同。
 
